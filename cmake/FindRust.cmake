@@ -362,6 +362,19 @@ target-dir=\"cargo/build\"
     get_filename_component(_moddir ${CMAKE_CURRENT_LIST_FILE} DIRECTORY)
 endfunction(_gen_config)
 
+function(_gen_toplevel_config)
+    set(_DESTINATION_DIR ${CMAKE_BINARY_DIR})
+    set(_CARGO_CONFIG ${_DESTINATION_DIR}/.cargo/config)
+
+    if (NOT EXISTS ${_CARGO_CONFIG})
+        file(WRITE ${_CARGO_CONFIG}
+"\
+[build]
+target-dir=\"cargo/build\"
+")
+    endif()
+endfunction(_gen_toplevel_config)
+
 if (CMAKE_CONFIGURATION_TYPES)
     foreach(config_type ${CMAKE_CONFIGURATION_TYPES})
         _gen_config(${config_type} ON)
@@ -372,6 +385,8 @@ else()
     message(STATUS "Defaulting Cargo to build debug")
     _gen_config(Debug OFF)
 endif()
+
+_gen_toplevel_config()
 
 if(NOT TARGET Rust::Rustc)
     add_executable(Rust::Rustc IMPORTED GLOBAL)
