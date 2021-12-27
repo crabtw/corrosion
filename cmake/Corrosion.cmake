@@ -151,6 +151,19 @@ function(_add_cargo_build)
         endforeach()
     endif()
 
+    # config for cc crate
+    if (CMAKE_C_COMPILER)
+        list(APPEND cc_cfg CC="${CMAKE_C_COMPILER}")
+    endif()
+
+    if (CMAKE_CXX_COMPILER)
+        list(APPEND cc_cfg CXX="${CMAKE_CXX_COMPILER}")
+    endif()
+
+    if (CMAKE_AR)
+        list(APPEND cc_cfg AR="${CMAKE_AR}")
+    endif()
+
     # BYPRODUCTS doesn't support generator expressions, so only add BYPRODUCTS for single-config generators
     if (NOT CMAKE_CONFIGURATION_TYPES)
         set(target_dir ${CMAKE_CURRENT_BINARY_DIR})
@@ -162,6 +175,14 @@ function(_add_cargo_build)
     else()
         set(target_dir ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
         set(build_type_dir $<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:>>,debug,release>)
+    endif()
+
+    if (MSVC AND CMAKE_CONFIGURATION_TYPES)
+        set(dbg_crt $<IF:$<STREQUAL:${build_type_dir},debug>,/MDd,>)
+        list(APPEND cc_cfg
+            CFLAGS="${dbg_crt}"
+            CXXFLAGS="${dbg_crt}"
+        )
     endif()
 
     set(target_linker_language "$<TARGET_PROPERTY:cargo-build_${target_name},LINKER_LANGUAGE>")
@@ -283,6 +304,7 @@ function(_add_cargo_build)
                 ${compilers}
                 ${lang_targets}
                 CORROSION_LINKER_LANGUAGES="${linker_languages}"
+                ${cc_cfg}
             ${_CORROSION_GENERATOR}
                 --manifest-path "${path_to_toml}"
                 build-crate
