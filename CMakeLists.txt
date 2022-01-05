@@ -26,15 +26,15 @@ option(
 )
 
 set(
-  CORROSION_GENERATOR_EXECUTABLE CACHE STRING
-  "Use prebuilt, non-bootstrapped corrosion-generator")
-mark_as_advanced(CORROSION_GENERATOR_EXECUTABLE)
+  CORROSION_BUILDER_EXECUTABLE CACHE STRING
+  "Use prebuilt, non-bootstrapped corrosion-builder")
+mark_as_advanced(CORROSION_BUILDER_EXECUTABLE)
 
-if (CORROSION_GENERATOR_EXECUTABLE)
-    add_executable(Corrosion::Generator IMPORTED GLOBAL)
+if (CORROSION_BUILDER_EXECUTABLE)
+    add_executable(Corrosion::Builder IMPORTED GLOBAL)
     set_property(
-        TARGET Corrosion::Generator
-        PROPERTY IMPORTED_LOCATION ${CORROSION_GENERATOR_EXECUTABLE})
+        TARGET Corrosion::Builder
+        PROPERTY IMPORTED_LOCATION ${CORROSION_BUILDER_EXECUTABLE})
     set(CORROSION_INSTALL_EXECUTABLE_DEFAULT OFF)
 else()
     set(CORROSION_INSTALL_EXECUTABLE_DEFAULT ON)
@@ -42,7 +42,7 @@ endif()
 
 option(
     CORROSION_INSTALL_EXECUTABLE
-    "Controls whether corrosion-generator is installed with the package"
+    "Controls whether corrosion-builder is installed with the package"
     ${CORROSION_INSTALL_EXECUTABLE_DEFAULT}
 )
 mark_as_advanced(CORROSION_INSTALL_EXECUTABLE)
@@ -54,7 +54,7 @@ if (_CORROSION_TOP_LEVEL)
     enable_language(CXX)
 endif()
 
-# This little bit self-hosts the Corrosion toolchain to build the generator
+# This little bit self-hosts the Corrosion toolchain to build the builder
 # tool.
 #
 # It is strongly encouraged to install Corrosion separately and use
@@ -86,25 +86,25 @@ else()
     set(CORROSION_INSTALL_PREFIX)
 endif()
 
-# Builds the generator executable
-corrosion_import_crate(MANIFEST_PATH generator/Cargo.toml)
+# Builds the builder executable
+corrosion_import_crate(MANIFEST_PATH builder/Cargo.toml)
 
 # Set the link language to CXX since it's already enabled
-corrosion_set_linker_language(corrosion-generator CXX)
+corrosion_set_linker_language(corrosion-builder CXX)
 
 if (IS_ABSOLUTE ${CMAKE_INSTALL_LIBEXECDIR})
-    set(_CORROSION_GENERATOR_DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")
+    set(_CORROSION_BUILDER_DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}")
 else()
-    set(_CORROSION_GENERATOR_DESTINATION "${CORROSION_INSTALL_PREFIX}${CMAKE_INSTALL_LIBEXECDIR}")
+    set(_CORROSION_BUILDER_DESTINATION "${CORROSION_INSTALL_PREFIX}${CMAKE_INSTALL_LIBEXECDIR}")
 endif()
 
 if (CORROSION_INSTALL_EXECUTABLE)
     corrosion_install(
-        TARGETS corrosion-generator
-        DESTINATION "${_CORROSION_GENERATOR_DESTINATION}"
+        TARGETS corrosion-builder
+        DESTINATION "${_CORROSION_BUILDER_DESTINATION}"
     )
 else ()
-    message(DEBUG "Not installing corrosion-generator since "
+    message(DEBUG "Not installing corrosion-builder since "
         "`CORROSION_INSTALL_EXECUTABLE` is set to ${CORROSION_INSTALL_EXECUTABLE}"
     )
 endif()

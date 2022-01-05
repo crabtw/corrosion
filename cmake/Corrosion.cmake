@@ -9,7 +9,7 @@ option(CORROSION_VERBOSE_OUTPUT "Enables verbose output from Corrosion and Cargo
 
 find_package(Rust REQUIRED)
 
-if (NOT TARGET Corrosion::Generator)
+if (NOT TARGET Corrosion::Builder)
     message(STATUS "Using Corrosion as a subdirectory")
 endif()
 
@@ -25,14 +25,14 @@ get_property(
 
 include(CorrosionGenerator)
 
-if (NOT TARGET Corrosion::Generator)
-    set(_CORROSION_GENERATOR_EXE
-        ${CARGO_EXECUTABLE} run --quiet --manifest-path "${CMAKE_CURRENT_LIST_DIR}/../generator/Cargo.toml" --)
+if (NOT TARGET Corrosion::Builder)
+    set(_CORROSION_BUILDER_EXE
+        ${CARGO_EXECUTABLE} run --quiet --manifest-path "${CMAKE_CURRENT_LIST_DIR}/../builder/Cargo.toml" --)
     if (CORROSION_DEV_MODE)
         # If you're developing Corrosion, you want to make sure to re-configure whenever the
-        # generator changes.
-        file(GLOB_RECURSE _RUST_FILES CONFIGURE_DEPENDS generator/src/*.rs)
-        file(GLOB _CARGO_FILES CONFIGURE_DEPENDS generator/Cargo.*)
+        # builder changes.
+        file(GLOB_RECURSE _RUST_FILES CONFIGURE_DEPENDS builder/src/*.rs)
+        file(GLOB _CARGO_FILES CONFIGURE_DEPENDS builder/Cargo.*)
         set_property(
             DIRECTORY APPEND
             PROPERTY CMAKE_CONFIGURE_DEPENDS
@@ -40,8 +40,8 @@ if (NOT TARGET Corrosion::Generator)
     endif()
 else()
     get_property(
-        _CORROSION_GENERATOR_EXE
-        TARGET Corrosion::Generator PROPERTY IMPORTED_LOCATION
+        _CORROSION_BUILDER_EXE
+        TARGET Corrosion::Builder PROPERTY IMPORTED_LOCATION
     )
 endif()
 
@@ -50,13 +50,13 @@ if (CORROSION_VERBOSE_OUTPUT)
 endif()
 
 set(
-    _CORROSION_GENERATOR
+    _CORROSION_BUILDER
     ${CMAKE_COMMAND} -E env
         CARGO_BUILD_RUSTC=${RUSTC_EXECUTABLE}
-        ${_CORROSION_GENERATOR_EXE}
-            --cargo ${CARGO_EXECUTABLE}
+        ${_CORROSION_BUILDER_EXE}
+            ${CARGO_EXECUTABLE}
             ${_CORROSION_VERBOSE_OUTPUT_FLAG}
-    CACHE INTERNAL "corrosion-generator runner"
+    CACHE INTERNAL "corrosion-builder runner"
 )
 
 set(_CORROSION_CARGO_VERSION ${Rust_CARGO_VERSION} CACHE INTERNAL "cargo version used by corrosion")
@@ -138,19 +138,6 @@ function(_add_cargo_build)
         endforeach()
     endif()
 
-    # config for cc crate
-    if (CMAKE_C_COMPILER)
-        list(APPEND cc_cfg CC="${CMAKE_C_COMPILER}")
-    endif()
-
-    if (CMAKE_CXX_COMPILER)
-        list(APPEND cc_cfg CXX="${CMAKE_CXX_COMPILER}")
-    endif()
-
-    if (CMAKE_AR)
-        list(APPEND cc_cfg AR="${CMAKE_AR}")
-    endif()
-
     # BYPRODUCTS doesn't support generator expressions, so only add BYPRODUCTS for single-config generators
     if (NOT CMAKE_CONFIGURATION_TYPES)
         set(target_dir ${CMAKE_CURRENT_BINARY_DIR})
@@ -164,11 +151,12 @@ function(_add_cargo_build)
         set(build_type_dir $<IF:$<OR:$<CONFIG:Debug>,$<CONFIG:>>,debug,release>)
     endif()
 
+    set(cc_flags)
     if (MSVC AND CMAKE_CONFIGURATION_TYPES)
         set(dbg_crt $<IF:$<STREQUAL:${build_type_dir},debug>,/MDd,>)
-        list(APPEND cc_cfg
-            CFLAGS="${dbg_crt}"
-            CXXFLAGS="${dbg_crt}"
+        list(APPEND cc_flags
+            CORROSION_CFLAGS="${dbg_crt}"
+            CORROSION_CXXFLAGS="${dbg_crt}"
         )
     endif()
 
@@ -208,7 +196,7 @@ function(_add_cargo_build)
     # `rustflags_target_property` may contain multiple arguments and double quotes, so we _should_ single quote it to
     # preserve any double quotes and keep it as one argument value. However single quotes don't work on windows, so we
     # can only add double quotes here. Any double quotes _in_ the rustflags must be escaped like `\\\"`.
-    set(rustflags_genex "$<$<BOOL:${rustflags_target_property}>:--rustflags=\"${rustflags_target_property}\">")
+    set(rustflags_genex "$<$<BOOL:${rustflags_target_property}>:CORROSION_RUSTFLAGS=\"${rustflags_target_property}\">")
 
     set(build_env_variable_genex "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_ENVIRONMENT_VARIABLES>>")
 
@@ -268,6 +256,11 @@ function(_add_cargo_build)
     elseif(DEFINED ENV{CXX})
         set(corrosion_cc "CXX=$ENV{CXX}")
     endif()
+    if(CMAKE_AR)
+        set(corrosion_ar "AR=${CMAKE_AR}")
+    elseif(DEFINED ENV{AR})
+        set(corrosion_ar "AR=$ENV{AR}")
+    endif()
 
     add_custom_target(
         cargo-build_${target_name}
@@ -284,23 +277,23 @@ function(_add_cargo_build)
                 CORROSION_LINK_DIRECTORIES=${search_dirs}
                 ${corrosion_cc}
                 ${corrosion_cxx}
+                ${corrosion_ar}
                 ${corrosion_link_args}
+                ${rustflags_genex}
                 ${link_prefs}
                 ${compilers}
                 ${lang_targets}
                 CORROSION_LINKER_LANGUAGES="${linker_languages}"
-                ${cc_cfg}
-            ${_CORROSION_GENERATOR}
+                ${cc_flags}
+            ${_CORROSION_BUILDER}
                 --manifest-path "${path_to_toml}"
-                build-crate
-                    ${cargo_profile}
-                    ${features_args}
-                    ${all_features_arg}
-                    ${no_default_features_arg}
-                    ${features_genex}
-                    ${cargo_target_option}
-                    ${rustflags_genex}
-                    --package ${package_name}
+                ${cargo_profile}
+                ${features_args}
+                ${all_features_arg}
+                ${no_default_features_arg}
+                ${features_genex}
+                ${cargo_target_option}
+                --package ${package_name}
         # Copy crate artifacts to the binary dir
         COMMAND
             ${CMAKE_COMMAND} -E copy_if_different ${build_byproducts} ${target_dir}
@@ -337,14 +330,10 @@ function(corrosion_import_crate)
         message(FATAL_ERROR "MANIFEST_PATH is a required keyword to corrosion_add_crate")
     endif()
 
-    if(COR_PROFILE)
-        if(Rust_VERSION VERSION_LESS 1.57.0)
-            message(FATAL_ERROR "Selecting custom profiles via `PROFILE` requires at least rust 1.57.0, but you "
-                        "have ${Rust_VERSION}."
+    if(COR_PROFILE AND Rust_VERSION VERSION_LESS 1.57.0)
+        message(FATAL_ERROR "Selecting custom profiles via `PROFILE` requires at least rust 1.57.0, but you "
+                    "have ${Rust_VERSION}."
         )
-        else()
-            set(cargo_profile --profile=${COR_PROFILE})
-        endif()
     endif()
 
     if (NOT IS_ABSOLUTE "${COR_MANIFEST_PATH}")
@@ -387,9 +376,9 @@ endfunction()
 function(corrosion_add_target_rustflags target_name rustflag)
     # Additional rustflags may be passed as optional parameters after rustflag.
     set_property(
-            TARGET ${target_name}
-            APPEND
-            PROPERTY INTERFACE_CORROSION_RUSTFLAGS ${rustflag} ${ARGN}
+        TARGET ${target_name}
+        APPEND
+        PROPERTY INTERFACE_CORROSION_RUSTFLAGS ${rustflag} ${ARGN}
     )
 endfunction()
 

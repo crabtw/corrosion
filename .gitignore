@@ -1,6 +1,6 @@
 
 **/target/
 **/*.rs.bk
-build*/
+build/
 install*/
 .vscode

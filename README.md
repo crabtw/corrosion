@@ -216,12 +216,12 @@ Corrosion is built and installed. Only applies to Corrosion builds and subdirect
 if Corrosion is a subdirectory, `ON` if it is the top-level project
 - `CORROSION_BUILD_TESTS:BOOL` - Build the Corrosion tests. Default: `Off` if Corrosion is a
 subdirectory, `ON` if it is the top-level project
-- `CORROSION_GENERATOR_EXECUTABLE:STRING` - Specify a path to the corrosion-generator executable.
-This is to support scenarios where it's easier to build corrosion-generator outside of the normal
+- `CORROSION_BUILDER_EXECUTABLE:STRING` - Specify a path to the corrosion-builder executable.
+This is to support scenarios where it's easier to build corrosion-builder outside of the normal
 bootstrap path, such as in the case of package managers that make it very easy to import Rust
 crates for fully reproducible, offline builds.
-- `CORROSION_INSTALL_EXECUTABLE:BOOL` - Controls whether corrosion-generator is installed with the
-package. Default: `ON` with `CORROSION_GENERATOR_EXECUTABLE` unset, otherwise `OFF`
+- `CORROSION_INSTALL_EXECUTABLE:BOOL` - Controls whether corrosion-builder is installed with the
+package. Default: `ON` with `CORROSION_BUILDER_EXECUTABLE` unset, otherwise `OFF`
 
 ### Importing C-Style Libraries Written in Rust
 Corrosion makes it completely trivial to import a crate into an existing CMake project. Consider
