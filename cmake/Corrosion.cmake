@@ -1,22 +1,11 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.19)
 
 if (CMAKE_GENERATOR STREQUAL "Ninja Multi-Config" AND CMAKE_VERSION VERSION_LESS 3.20.0)
     message(FATAL_ERROR "Corrosion requires at least CMake 3.20 with the \"Ninja Multi-Config\" "
        "generator. Please use a different generator or update to cmake >= 3.20.")
 endif()
 
-
 option(CORROSION_VERBOSE_OUTPUT "Enables verbose output from Corrosion and Cargo" OFF)
-
-option(
-    CORROSION_EXPERIMENTAL_PARSER
-    "Enable Corrosion to parse cargo metadata by CMake string(JSON ...) command"
-    ON
-)
-
-if (CMAKE_VERSION VERSION_LESS 3.19.0)
-    set(CORROSION_EXPERIMENTAL_PARSER OFF CACHE INTERNAL "" FORCE)
-endif()
 
 find_package(Rust REQUIRED)
 
@@ -34,9 +23,7 @@ get_property(
     TARGET Rust::Cargo PROPERTY IMPORTED_LOCATION
 )
 
-if (CORROSION_EXPERIMENTAL_PARSER)
-    include(CorrosionGenerator)
-endif()
+include(CorrosionGenerator)
 
 if (NOT TARGET Corrosion::Generator)
     set(_CORROSION_GENERATOR_EXE
@@ -223,30 +210,28 @@ function(_add_cargo_build)
     # can only add double quotes here. Any double quotes _in_ the rustflags must be escaped like `\\\"`.
     set(rustflags_genex "$<$<BOOL:${rustflags_target_property}>:--rustflags=\"${rustflags_target_property}\">")
 
-    if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.19.0)
-        set(build_env_variable_genex "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_ENVIRONMENT_VARIABLES>>")
+    set(build_env_variable_genex "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_ENVIRONMENT_VARIABLES>>")
 
-        set(features_target_property "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_FEATURES>>")
-        set(features_genex "$<$<BOOL:${features_target_property}>:--features=$<JOIN:${features_target_property},$<COMMA>>>")
+    set(features_target_property "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_FEATURES>>")
+    set(features_genex "$<$<BOOL:${features_target_property}>:--features=$<JOIN:${features_target_property},$<COMMA>>>")
 
-        # target property overrides corrosion_import_crate argument
-        set(all_features_target_property "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_ALL_FEATURES>>")
-        set(all_features_property_exists_condition "$<NOT:$<STREQUAL:${all_features_target_property},>>")
-        set(all_features_property_arg "$<IF:$<BOOL:${all_features_target_property}>,--all-features,>")
-        set(all_features_arg "$<IF:${all_features_property_exists_condition},${all_features_property_arg},${all_features_arg}>")
+    # target property overrides corrosion_import_crate argument
+    set(all_features_target_property "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_ALL_FEATURES>>")
+    set(all_features_property_exists_condition "$<NOT:$<STREQUAL:${all_features_target_property},>>")
+    set(all_features_property_arg "$<IF:$<BOOL:${all_features_target_property}>,--all-features,>")
+    set(all_features_arg "$<IF:${all_features_property_exists_condition},${all_features_property_arg},${all_features_arg}>")
 
-        set(no_default_features_target_property "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_NO_DEFAULT_FEATURES>>")
-        set(no_default_features_property_exists_condition "$<NOT:$<STREQUAL:${no_default_features_target_property},>>")
-        set(no_default_features_property_arg "$<IF:$<BOOL:${no_default_features_target_property}>,--no-default-features,>")
-        set(no_default_features_arg "$<IF:${no_default_features_property_exists_condition},${no_default_features_property_arg},${no_default_features_arg}>")
+    set(no_default_features_target_property "$<GENEX_EVAL:$<TARGET_PROPERTY:${target_name},CORROSION_NO_DEFAULT_FEATURES>>")
+    set(no_default_features_property_exists_condition "$<NOT:$<STREQUAL:${no_default_features_target_property},>>")
+    set(no_default_features_property_arg "$<IF:$<BOOL:${no_default_features_target_property}>,--no-default-features,>")
+    set(no_default_features_arg "$<IF:${no_default_features_property_exists_condition},${no_default_features_property_arg},${no_default_features_arg}>")
 
-        set(if_not_host_build_condition "$<NOT:$<BOOL:$<TARGET_PROPERTY:${target_name},CORROSION_USE_HOST_BUILD>>>")
+    set(if_not_host_build_condition "$<NOT:$<BOOL:$<TARGET_PROPERTY:${target_name},CORROSION_USE_HOST_BUILD>>>")
 
-        set(linker_languages "$<${if_not_host_build_condition}:${linker_languages}>")
-        set(corrosion_link_args "$<${if_not_host_build_condition}:${corrosion_link_args}>")
-        set(cargo_target_option "$<IF:${if_not_host_build_condition},${cargo_target_option},--target=${_CORROSION_RUST_CARGO_HOST_TARGET}>")
-        set(target_artifact_dir "$<IF:${if_not_host_build_condition},${target_artifact_dir},${_CORROSION_RUST_CARGO_HOST_TARGET}>")
-    endif()
+    set(linker_languages "$<${if_not_host_build_condition}:${linker_languages}>")
+    set(corrosion_link_args "$<${if_not_host_build_condition}:${corrosion_link_args}>")
+    set(cargo_target_option "$<IF:${if_not_host_build_condition},${cargo_target_option},--target=${_CORROSION_RUST_CARGO_HOST_TARGET}>")
+    set(target_artifact_dir "$<IF:${if_not_host_build_condition},${target_artifact_dir},${_CORROSION_RUST_CARGO_HOST_TARGET}>")
 
     if(cargo_profile_name)
         set(cargo_profile "--profile=${cargo_profile_name}")
@@ -366,93 +351,24 @@ function(corrosion_import_crate)
         set(COR_MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${COR_MANIFEST_PATH})
     endif()
 
-    if (CORROSION_EXPERIMENTAL_PARSER)
-        _generator_add_cargo_targets(
-            MANIFEST_PATH
-                "${COR_MANIFEST_PATH}"
-            CONFIGURATION_ROOT
-                "${CMAKE_VS_PLATFORM_NAME}"
-            TARGET
-                "${_CORROSION_RUST_CARGO_TARGET}"
-            CARGO_VERSION
-                "${_CORROSION_CARGO_VERSION}"
-            CONFIGURATION_TYPE
-                "${CMAKE_BUILD_TYPE}"
-            CONFIGURATION_TYPES
-                "${CMAKE_CONFIGURATION_TYPES}"
-            CRATES
-                "${COR_CRATES}"
-            PROFILE
-                "${COR_PROFILE}"
-        )
-    else()
-        execute_process(
-            COMMAND
-                ${_CORROSION_GENERATOR}
-                    --manifest-path ${COR_MANIFEST_PATH}
-                    print-root
-            OUTPUT_VARIABLE toml_dir
-            RESULT_VARIABLE ret)
-
-        if (NOT ret EQUAL "0")
-            message(FATAL_ERROR "corrosion-generator failed: ${ret}")
-        endif()
-
-        string(STRIP "${toml_dir}" toml_dir)
-
-        get_filename_component(toml_dir_name ${toml_dir} NAME)
-
-        set(
-            generated_cmake
-            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/corrosion/${toml_dir_name}.dir/cargo-build.cmake"
-        )
-
-        if (CMAKE_VS_PLATFORM_NAME)
-            set (_CORROSION_CONFIGURATION_ROOT --configuration-root ${CMAKE_VS_PLATFORM_NAME})
-        endif()
-
-        if (_CORROSION_RUST_CARGO_TARGET)
-            set(_CORROSION_TARGET --target ${_CORROSION_RUST_CARGO_TARGET})
-        endif()
-
-        if(CMAKE_CONFIGURATION_TYPES)
-            string (REPLACE ";" "," _CONFIGURATION_TYPES
-                "${CMAKE_CONFIGURATION_TYPES}")
-            set (_CORROSION_CONFIGURATION_TYPES --configuration-types
-                ${_CONFIGURATION_TYPES})
-        elseif(CMAKE_BUILD_TYPE)
-            set (_CORROSION_CONFIGURATION_TYPES --configuration-type
-                ${CMAKE_BUILD_TYPE})
-        else()
-            # uses default build type
-        endif()
-
-        set(crates_args)
-        foreach(crate ${COR_CRATES})
-            list(APPEND crates_args --crates ${crate})
-        endforeach()
-
-        execute_process(
-            COMMAND
-                ${_CORROSION_GENERATOR}
-                    --manifest-path ${COR_MANIFEST_PATH}
-                    gen-cmake
-                        ${_CORROSION_CONFIGURATION_ROOT}
-                        ${_CORROSION_TARGET}
-                        ${_CORROSION_CONFIGURATION_TYPES}
-                        ${crates_args}
-                        ${cargo_profile}
-                        --cargo-version ${_CORROSION_CARGO_VERSION}
-                        -o ${generated_cmake}
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-            RESULT_VARIABLE ret)
-
-        if (NOT ret EQUAL "0")
-            message(FATAL_ERROR "corrosion-generator failed")
-        endif()
-
-        include(${generated_cmake})
-    endif()
+    _generator_add_cargo_targets(
+        MANIFEST_PATH
+            "${COR_MANIFEST_PATH}"
+        CONFIGURATION_ROOT
+            "${CMAKE_VS_PLATFORM_NAME}"
+        TARGET
+            "${_CORROSION_RUST_CARGO_TARGET}"
+        CARGO_VERSION
+            "${_CORROSION_CARGO_VERSION}"
+        CONFIGURATION_TYPE
+            "${CMAKE_BUILD_TYPE}"
+        CONFIGURATION_TYPES
+            "${CMAKE_CONFIGURATION_TYPES}"
+        CRATES
+            "${COR_CRATES}"
+        PROFILE
+            "${COR_PROFILE}"
+    )
 endfunction(corrosion_import_crate)
 
 function(add_crate path_to_toml)

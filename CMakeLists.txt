@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.19)
 project(Corrosion VERSION 0.1.0 LANGUAGES NONE)
 
 # Default behavior:
@@ -103,7 +103,7 @@ if (CORROSION_INSTALL_EXECUTABLE)
         TARGETS corrosion-generator
         DESTINATION "${_CORROSION_GENERATOR_DESTINATION}"
     )
-elseif (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.15.0")
+else ()
     message(DEBUG "Not installing corrosion-generator since "
         "`CORROSION_INSTALL_EXECUTABLE` is set to ${CORROSION_INSTALL_EXECUTABLE}"
     )
@@ -118,16 +118,12 @@ configure_package_config_file(
         ${CORROSION_INSTALL_PREFIX}${CMAKE_INSTALL_LIBDIR}/cmake/Corrosion
 )
 
-if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.14")
-    set(arch_independent ARCH_INDEPENDENT)
-endif()
-
 write_basic_package_version_file(
     ${CMAKE_CURRENT_BINARY_DIR}/CorrosionConfigVersion.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY
         SameMinorVersion # TODO: Should be SameMajorVersion when 1.0 is released
-    ${arch_independent}
+    ARCH_INDEPENDENT
 )
 
 install(

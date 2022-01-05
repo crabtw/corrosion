@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.19)
 project(CorrosionTests LANGUAGES CXX)
 
 # If building the tests as a top-level project
@@ -18,11 +18,9 @@ add_subdirectory(cpp2rust)
 add_subdirectory(rust2cpp)
 add_subdirectory(workspace)
 add_subdirectory(rustflags)
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.19.0)
-    add_subdirectory(envvar)
-    add_subdirectory(hostbuild)
-    add_subdirectory(features)
-endif()
+add_subdirectory(envvar)
+add_subdirectory(hostbuild)
+add_subdirectory(features)
 
 if(Rust_VERSION VERSION_GREATER_EQUAL 1.57.0)
     add_subdirectory(custom_profiles)

@@ -18,7 +18,7 @@ from a crate.
 
 ## Sample Usage
 ```cmake
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.19)
 project(MyCoolProject LANGUAGES CXX)
 
 find_package(Corrosion REQUIRED)
