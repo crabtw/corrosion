@@ -39,7 +39,7 @@ function(_generator_parse_platform manifest version target)
     if(os STREQUAL "windows")
         set(is_windows TRUE)
 
-        list(APPEND libs "advapi32" "userenv" "ws2_32")
+        list(APPEND libs "advapi32" "userenv" "ws2_32" "bcrypt")
 
         if(env STREQUAL "msvc")
             set(is_windows_msvc TRUE)
@@ -50,14 +50,6 @@ function(_generator_parse_platform manifest version target)
             set(is_windows_gnu TRUE)
 
             list(APPEND libs "gcc_eh" "pthread")
-        endif()
-
-        if(version VERSION_LESS "1.33.0")
-            list(APPEND libs "shell32" "kernel32")
-        endif()
-
-        if(version VERSION_GREATER_EQUAL "1.57.0")
-            list(APPEND libs "bcrypt")
         endif()
     elseif(os STREQUAL "apple" AND env STREQUAL "darwin")
         set(is_macos TRUE)
@@ -235,10 +227,7 @@ function(_generator_add_target manifest ix cargo_version profile)
     # Only shared libraries and executables have PDBs on Windows
     # We don't know why PDBs aren't generated for staticlibs...
     if(is_windows_msvc AND (has_cdylib OR is_executable))
-        if(cargo_version VERSION_LESS "1.45.0")
-            set(prefix "deps/")
-        endif()
-        list(APPEND byproducts "${prefix}${pdb_name}")
+        list(APPEND byproducts "${pdb_name}")
     endif()
 
     _add_cargo_build(

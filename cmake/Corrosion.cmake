@@ -330,12 +330,6 @@ function(corrosion_import_crate)
         message(FATAL_ERROR "MANIFEST_PATH is a required keyword to corrosion_add_crate")
     endif()
 
-    if(COR_PROFILE AND Rust_VERSION VERSION_LESS 1.57.0)
-        message(FATAL_ERROR "Selecting custom profiles via `PROFILE` requires at least rust 1.57.0, but you "
-                    "have ${Rust_VERSION}."
-        )
-    endif()
-
     if (NOT IS_ABSOLUTE "${COR_MANIFEST_PATH}")
         set(COR_MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/${COR_MANIFEST_PATH})
     endif()

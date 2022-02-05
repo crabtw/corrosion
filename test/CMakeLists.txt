@@ -21,10 +21,7 @@ add_subdirectory(rustflags)
 add_subdirectory(envvar)
 add_subdirectory(hostbuild)
 add_subdirectory(features)
-
-if(Rust_VERSION VERSION_GREATER_EQUAL 1.57.0)
-    add_subdirectory(custom_profiles)
-endif()
+add_subdirectory(custom_profiles)
 
 # Config tests don't work if this is the top level directory.
 if (NOT _TOP_LEVEL)
